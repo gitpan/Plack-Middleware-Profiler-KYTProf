@@ -2,7 +2,7 @@ package Plack::Middleware::Profiler::KYTProf;
 use strict;
 use warnings;
 use parent qw(Plack::Middleware);
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 use Plack::Util::Accessor qw(
     namespace_regex
@@ -30,7 +30,7 @@ sub _setup_enable_profile_if {
     $self->enable_profile_if( sub {1} ) unless $self->enable_profile_if;
 }
 
-sub start_profiling_if_needed {
+sub _setup_profiler_if_needed {
     my ( $self, $env ) = @_;
 
     my $pid = $$;
@@ -39,6 +39,12 @@ sub start_profiling_if_needed {
 
     my $is_profiler_enabled = $self->enable_profile_if->($env);
     return unless $is_profiler_enabled;
+
+    $self->_setup_profiler;
+}
+
+sub _setup_profiler {
+    my $self = shift;
 
     $self->_load_kytprof;
     $self->_set_kytprof_options;
@@ -59,6 +65,8 @@ sub _set_kytprof_options {
         if $self->ignore_class_regex;
     Devel::KYTProf->context_classes_regex( $self->context_classes_regex )
         if $self->context_classes_regex;
+
+    # TODO Should we create logger adapter for popular logging framework?
     Devel::KYTProf->logger( $self->logger )       if $self->logger;
     Devel::KYTProf->threshold( $self->threshold ) if $self->threshold;
     Devel::KYTProf->remove_linefeed( $self->remove_linefeed )
@@ -77,8 +85,10 @@ sub _load_profiles {
     my $self = shift;
 
     my $profiles ||= $self->profiles;
-    $profiles
-        ||= ['Plack::Middleware::Profiler::KYTProf::Profile::DefaultProfile'];
+    $profiles ||= [
+        'Plack::Middleware::Profiler::KYTProf::Profile::TemplateEngine',
+        'Plack::Middleware::Profiler::KYTProf::Profile::KVS'
+    ];
     foreach my $profile (@$profiles) {
         $self->_load_module($profile);
         die "profile class must implement load method"
@@ -94,7 +104,7 @@ sub _load_module {
 
 sub call {
     my ( $self, $env ) = @_;
-    $self->start_profiling_if_needed($env);
+    $self->_setup_profiler_if_needed($env);
 
     my $res = $self->app->($env);
 
@@ -129,10 +139,94 @@ Plack::Middleware::Profiler::KYTProf - Profile psgi app with KYTProf
 =head1 DESCRIPTION
 
 Plack::Middleware::Profiler::KYTProf is the PSGI app profiler.
-Use logger, enable_profile_if and threshold option in production environment.
+Use enable_profile_if, logger and threshold option in production environment.
 
 Use profiles if you need application specific profiling.
-See the sample profile L<Plack::Middleware::Profiler::KYTProf::Profile::DefaultProfile>.
+See the sample profile L<Plack::Middleware::Profiler::KYTProf::Profile::TemplateEngine>.
+
+=head1 OPTIONS
+
+NOTE that some options expect a code reference. Maybe, you feel it is complicated. 
+However that will enable to control them programmably. It is more useful to your apps.
+
+=over 4
+
+=item enable_profile_if
+
+default
+
+    sub { 1 }
+
+Use code reference if you want to enable profiling programmably 
+This option is optional.
+
+=item profiles
+
+You can add profiling target modules if you use this option.
+
+default
+
+    [
+        'Plack::Middleware::Profiler::KYTProf::Profile::TemplateEngine',
+        'Plack::Middleware::Profiler::KYTProf::Profile::KVS'
+    ];
+
+=item namespace_regex
+
+See L<Devel::KYTProf> POD.
+
+default
+
+    undef
+
+
+=item ignore_class_regex
+
+See L<Devel::KYTProf> POD.
+
+default
+
+    undef
+
+
+=item context_classes_regex
+
+See L<Devel::KYTProf> POD.
+
+=item logger
+
+See L<Devel::KYTProf> POD.
+
+default
+
+    undef
+
+
+=item threshold
+
+See L<Devel::KYTProf> POD.
+
+default
+
+    undef
+
+=item remove_linefeed
+
+See L<Devel::KYTProf> POD.
+
+default
+
+    undef
+
+=item mutes
+
+See L<Devel::KYTProf> POD.
+
+default
+
+    undef
+
+=back
 
 =head1 SOURCE AVAILABILITY
 
@@ -149,6 +243,8 @@ Many thanks to:
 Dann E<lt>techmemo@gmail.comE<gt>
 
 =head1 SEE ALSO
+
+L<Devel::KYTProf>
 
 =head1 LICENSE
 

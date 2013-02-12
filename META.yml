@@ -4,6 +4,7 @@ author:
   - 'Dann <techmemo@gmail.com>'
 build_requires:
   ExtUtils::MakeMaker: 6.36
+  Text::Requires: 0
 configure_requires:
   ExtUtils::MakeMaker: 6.36
 distribution_type: module
@@ -28,4 +29,4 @@ requires:
   parent: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.03
+version: 0.04
