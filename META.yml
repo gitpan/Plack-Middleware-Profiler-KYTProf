@@ -21,11 +21,11 @@ no_index:
     - t
     - xt
 requires:
-  Devel::KYTProf: 0
+  Devel::KYTProf: 0.04
   Filter::Util::Call: 0
   Module::Load: 0
   Plack: 0
   parent: 0
 resources:
   license: http://dev.perl.org/licenses/
-version: 0.061
+version: 0.07
